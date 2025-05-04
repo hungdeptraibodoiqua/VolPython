@@ -1,9 +1,9 @@
 #Tạo giao diện cho project
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QPushButton,
-    QVBoxLayout, QHBoxLayout, QTextEdit, QFileDialog
+    QVBoxLayout, QHBoxLayout, QTextEdit, QFileDialog, QLineEdit
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import pyqtSignal
 import core
 
 # Thành phần GUI cho việc kéo và thả file
@@ -51,39 +51,52 @@ class MainWindow(QMainWindow):
         self.initUI()
 
     def initUI(self):
-        self.setWindowTitle('Memory Analyzer')
+        self.setWindowTitle('Memory Analyzer - By Van Hung - Agribank SOC TEAM (TEST VERSION)')
         self.setGeometry(100, 100, 800, 600)
 
         self.drop_area = DropArea()
         self.output_area = QTextEdit()
         self.output_area.setReadOnly(True)
+
+        # offset layout
+        offset_layout = QHBoxLayout()
+        offset_label = QLabel("OFFSET:")
+        self.offset_input = QLineEdit()
+        self.offset_input.setPlaceholderText("Enter OFFSET (hex format)...")
+        offset_layout.addWidget(offset_label)
+        offset_layout.addWidget(self.offset_input)
         
         # tạo các nút bấm
         self.pslist_btn = QPushButton('Run pslist', clicked=self.run_pslist)
         self.pstree_btn = QPushButton('Run pstree', clicked=self.run_pstree)
         self.cmdline_btn = QPushButton('Run cmdline', clicked=self.run_cmdline)
         self.malfind_btn = QPushButton('Run malfind', clicked=self.run_malfind)
+        self.filescan_btn = QPushButton('Run filescan', clicked=self.run_filescan)
+        self.dumpfiles_btn = QPushButton('Run dumpfile', clicked=self.run_dumpfiles)
         self.export_btn = QPushButton('Export to CSV', clicked=self.export_csv)
         exit_btn = QPushButton('Exit', clicked=self.close)
 
         layout = QVBoxLayout()
         layout.addWidget(self.drop_area)
         layout.addWidget(self.output_area)
-        
+        layout.addLayout(offset_layout)  # Thêm OFFSET input
+
         # tạo layout cho các nút bấm
         # Sử dụng QVBoxLayout để sắp xếp các nút bấm theo cột dọc
         btn_layout = QVBoxLayout()
         
-        # tạo hàng đầu tiên với pslist và pstree
+        # tạo hàng đầu tiên với pslist và pstree và dumpfiles
         top_row = QHBoxLayout()
         top_row.addWidget(self.pslist_btn)
         top_row.addWidget(self.pstree_btn)
+        top_row.addWidget(self.dumpfiles_btn)
         btn_layout.addLayout(top_row)
         
         # tạo hàng thứ hai với cmdline và malfind
         bottom_row = QHBoxLayout()
         bottom_row.addWidget(self.cmdline_btn)
         bottom_row.addWidget(self.malfind_btn)
+        bottom_row.addWidget(self.filescan_btn)
         btn_layout.addLayout(bottom_row)
         
         # thêm nút export và exit vào hàng riêng
@@ -149,6 +162,44 @@ class MainWindow(QMainWindow):
 
         output = core.run_malfind(self.memory_dump)
         self.output_area.setText(output)
+
+    # hàm xử lý sự kiện khi nút Run filescan được nhấn
+    def run_filescan(self):
+        if not self.memory_dump:
+            self.output_area.setText("Error: No memory dump loaded!")
+            return
+
+        output = core.run_filescan(self.memory_dump)
+        self.output_area.setText(output)
+
+    # ham xử lý sự kiện khi nút Run dumpfile được nhấn
+    def run_dumpfiles(self):
+        if not self.memory_dump:
+            self.output_area.setText("Error: No memory dump loaded!")
+            return
+
+        # Validate offset input
+        offset_text = self.offset_input.text().strip()
+        if not offset_text:
+            self.output_area.setText("Error: Please enter an OFFSET!")
+            return
+
+        try:
+            # Convert hex string to integer
+            offset = int(offset_text, 16)
+        except ValueError:
+            self.output_area.setText("Error: Invalid OFFSET format! Must be hex (e.g., 0x1000 or 1A3B)")
+            return
+
+        # Call core function with ALL parameters
+        output = core.run_dumpfiles(
+            memory_dump_path=self.memory_dump,
+            offset=offset,
+        )
+
+        # Show results
+        self.output_area.setText(f"Dump completed!\n{output}")
+
 
     # hàm xử lý sự kiện khi nút Export to CSV được nhấn
     # Kiểm tra xem có nội dung nào trong vùng hiển thị kết quả không
